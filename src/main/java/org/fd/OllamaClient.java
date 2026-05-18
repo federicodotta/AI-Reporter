@@ -1,7 +1,9 @@
 package org.fd;
 
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.ai.Ai;
 import burp.api.montoya.ai.chat.PromptException;
+import burp.api.montoya.core.BurpSuiteEdition;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.logging.Logging;
@@ -25,6 +27,7 @@ public class OllamaClient implements LlmClient{
 
     MontoyaApi api;
     boolean debug;
+    Ai ai;
 
 
     private static final String CHAT_ENDPOINT   = "/v1/chat/completions";
@@ -35,6 +38,7 @@ public class OllamaClient implements LlmClient{
         this.prompts = prompts;
         this.history = null;
         this.logging = api.logging();
+        this.ai = api.ai();
 
         this.baseUrl = loadPref("BASE_URL", Prefs.DEFAULT_URL);
         this.model = loadPref("MODEL", Prefs.DEFAULT_MODEL);
@@ -49,68 +53,91 @@ public class OllamaClient implements LlmClient{
     @Override
     public String oneShot(String userPrompt) throws PromptException {
 
-        JSONObject payload = new JSONObject()
-                .put("model", model)
-                .put("stream", false)
-                .put("messages", new JSONArray()
-                        .put(new JSONObject().put("role", "system").put("content", this.prompts.getPrompt("reportingPrompt")))
-                        .put(new JSONObject().put("role", "user").put("content", userPrompt)));
+        // With Burp Suite Pro, guidelines require to check if AI is enabled also with local models.
+        // This check is skipped for Community Edition, that does not include Burp AI but that can
+        // use the extension with local models.
+        if(ai.isEnabled() || api.burpSuite().version().edition() == BurpSuiteEdition.COMMUNITY_EDITION) {
 
-        if(temperature != 0.0)
-            payload.put("temperature", temperature);
+            JSONObject payload = new JSONObject()
+                    .put("model", model)
+                    .put("stream", false)
+                    .put("messages", new JSONArray()
+                            .put(new JSONObject().put("role", "system").put("content", this.prompts.getPrompt("reportingPrompt")))
+                            .put(new JSONObject().put("role", "user").put("content", userPrompt)));
 
-        String responseBody = doPost(payload.toString());
+            if(temperature != 0.0)
+                payload.put("temperature", temperature);
 
-        // Debug block
-        if (debug) {
-            this.logging.logToOutput("* Ollama/OpenAI one shot");
-            this.logging.logToOutput("** User prompt:");
-            this.logging.logToOutput(userPrompt);
-            this.logging.logToOutput("** Chat payload:");
-            this.logging.logToOutput(payload);
-            this.logging.logToOutput("** Response body:");
-            this.logging.logToOutput(responseBody);
-            this.logging.logToOutput("");
+            String responseBody = doPost(payload.toString());
+
+            // Debug block
+            if (debug) {
+                this.logging.logToOutput("* Ollama/OpenAI one shot");
+                this.logging.logToOutput("** User prompt:");
+                this.logging.logToOutput(userPrompt);
+                this.logging.logToOutput("** Chat payload:");
+                this.logging.logToOutput(payload);
+                this.logging.logToOutput("** Response body:");
+                this.logging.logToOutput(responseBody);
+                this.logging.logToOutput("");
+            }
+
+            return parseContentFromResponse(responseBody);
+
+        } else {
+            return null;
         }
 
-        return parseContentFromResponse(responseBody);
     }
 
     @Override
     public String chat(String userPrompt) throws PromptException {
 
-        if(this.history == null) {
-            this.history = new ArrayList<String[]>();
-            this.history.add(new String[]{"system",this.prompts.getPrompt("chatPrompt")});
+        // With Burp Suite Pro, guidelines require to check if AI is enabled also with local models.
+        // This check is skipped for Community Edition, that does not include Burp AI but that can
+        // use the extension with local models.
+        if(ai.isEnabled() || api.burpSuite().version().edition() == BurpSuiteEdition.COMMUNITY_EDITION) {
+
+            if (this.history == null) {
+                this.history = new ArrayList<String[]>();
+                this.history.add(new String[]{"system", this.prompts.getPrompt("chatPrompt")});
+            }
+
+            history.add(new String[]{"user", userPrompt});
+
+            String payload = buildChatPayload();
+
+            String responseBody = doPost(payload);
+            String reply = parseContentFromResponse(responseBody);
+
+            // Debug block
+            if (debug) {
+                this.logging.logToOutput("* Ollama/OpenAI chat");
+                this.logging.logToOutput("** User prompt:");
+                this.logging.logToOutput(userPrompt);
+                this.logging.logToOutput("** Chat payload:");
+                this.logging.logToOutput(payload);
+                this.logging.logToOutput("** Response body:");
+                this.logging.logToOutput(responseBody);
+                this.logging.logToOutput("");
+            }
+
+            history.add(new String[]{"assistant", reply});
+            return reply;
+
+        } else {
+
+            return null;
+
         }
-
-        history.add(new String[]{"user", userPrompt});
-
-        String payload = buildChatPayload();
-
-        String responseBody = doPost(payload);
-        String reply = parseContentFromResponse(responseBody);
-
-        // Debug block
-        if (debug) {
-            this.logging.logToOutput("* Ollama/OpenAI chat");
-            this.logging.logToOutput("** User prompt:");
-            this.logging.logToOutput(userPrompt);
-            this.logging.logToOutput("** Chat payload:");
-            this.logging.logToOutput(payload);
-            this.logging.logToOutput("** Response body:");
-            this.logging.logToOutput(responseBody);
-            this.logging.logToOutput("");
-        }
-
-        history.add(new String[]{"assistant", reply});
-        return reply;
     }
 
     @Override
     public boolean isAiEnabled() {
-        // Always return true with Ollama/OpenAI compatible (with all non Burp AI LLM providers)
-        return true;
+        // With Burp Suite Pro, guidelines require to check if AI is enabled also with local models.
+        // This check is skipped for Community Edition, that does not include Burp AI but that can
+        // use the extension with local models.
+        return ai.isEnabled() || api.burpSuite().version().edition() == BurpSuiteEdition.COMMUNITY_EDITION;
     }
 
     @Override
