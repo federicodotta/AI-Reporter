@@ -34,7 +34,7 @@ public class BurpAiClient implements LlmClient {
         this.logging = api.logging();
         this.temperature = Double.valueOf(loadPref("TEMPERATURE", Prefs.DEFAULT_TEMPERATURE));
         this.debug = debug;
-        this.htmlEncodeIssues = loadPref("TEMPERATURE", Prefs.DEFAULT_HTML_ENCODE).startsWith("YES");
+        this.htmlEncodeIssues = loadPref("HTML_ENCODE", Prefs.DEFAULT_HTML_ENCODE).startsWith("YES");
     }
 
     // Function that calls LLM without history

@@ -44,7 +44,7 @@ public class OllamaClient implements LlmClient{
         this.model = loadPref("MODEL", Prefs.DEFAULT_MODEL);
         this.apiKey = loadPref("API_KEY", "");
         this.temperature = Double.valueOf(loadPref("TEMPERATURE", Prefs.DEFAULT_TEMPERATURE));
-        this.htmlEncodeIssues = loadPref("TEMPERATURE", Prefs.DEFAULT_HTML_ENCODE).startsWith("YES");
+        this.htmlEncodeIssues = loadPref("HTML_ENCODE", Prefs.DEFAULT_HTML_ENCODE).startsWith("YES");
 
         this.debug = debug;
 
