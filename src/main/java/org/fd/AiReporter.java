@@ -54,7 +54,7 @@ public class AiReporter implements BurpExtension {
         // Build the initial client based on saved preference (default: BurpAI)
         this.activeClient = createClient(loadSavedProvider());
 
-        tab = new AiReporterUI(activeClient, executor, logging, this.preferences);
+        tab = new AiReporterUI(activeClient, executor, this.api);
         tab.setOnProviderChanged(this::switchProvider);
         api.userInterface().registerSuiteTab("AI Reporter", tab.getUI());
 

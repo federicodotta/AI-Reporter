@@ -1,5 +1,6 @@
 package org.fd;
 
+import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.logging.Logging;
 import burp.api.montoya.persistence.Preferences;
 
@@ -15,6 +16,7 @@ public class AiReporterUI {
     private final ExecutorService executor;
     private final Logging logging;
     private final Preferences preferences;
+    private final MontoyaApi api;
 
     private Consumer<LlmProvider> onProviderChanged;
 
@@ -34,11 +36,13 @@ public class AiReporterUI {
     private JComboBox<String> htmlEncodeCombo;
 
     public AiReporterUI(LlmClient client, ExecutorService executor,
-                        Logging logging, Preferences preferences) {
+                        MontoyaApi api) {
         this.client      = client;
         this.executor    = executor;
-        this.logging     = logging;
-        this.preferences = preferences;
+        this.logging     = api.logging();
+        this.preferences = api.persistence().preferences();
+        this.api = api;
+
     }
 
     public Component getUI() {
@@ -233,6 +237,16 @@ public class AiReporterUI {
                 + " | Temperature: " + client.getTemperature()
                 + " | HTML Encode: " + ( client.htmlEncodeIssues() ? "YES" : "NO"));
         setStatus("Config applied");
+
+        if(Double.valueOf(temperature) > 2.0) {
+            JOptionPane.showMessageDialog(
+                    api.userInterface().swingUtils().suiteFrame(),
+                    "Temperature should be set below 2.0! For better results, please change its value.",
+                    "Warning",
+                    JOptionPane.WARNING_MESSAGE
+            );
+        }
+
     }
 
     private void onSend(ActionEvent e) {
