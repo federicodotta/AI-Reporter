@@ -48,9 +48,9 @@ public class BurpAiClient implements LlmClient {
             // We execute the LLM call
             PromptResponse response;
             if(this.temperature != 0.0)
-                response = this.ai.prompt().execute(messages);
-            else
                 response = this.ai.prompt().execute(PromptOptions.promptOptions().withTemperature(temperature), messages);
+            else
+                response = this.ai.prompt().execute(messages);
 
             // Debug block
             if (debug) {
