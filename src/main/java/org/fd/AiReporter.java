@@ -71,7 +71,7 @@ public class AiReporter implements BurpExtension {
 
         // Register our Context Menu Item Provider
         customContextMenuItemProvider = new AiReporterContextProvider(api,activeClient,
-                this.debug, exporter);
+                this.debug, exporter, executor);
         api.userInterface().registerContextMenuItemsProvider(customContextMenuItemProvider);
 
         // Menu bar

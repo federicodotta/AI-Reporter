@@ -15,6 +15,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 public class AiReporterContextProvider implements ContextMenuItemsProvider {
@@ -25,8 +26,10 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
     LlmClient llmClient;
     boolean debug;
     MarkdownExporter exporter;
+    ExecutorService executor;
 
-    public AiReporterContextProvider(MontoyaApi api, LlmClient llmClient, boolean debug, MarkdownExporter exporter) {
+    public AiReporterContextProvider(MontoyaApi api, LlmClient llmClient, boolean debug, MarkdownExporter exporter,
+                                     ExecutorService executor) {
 
         // Save a reference to the MontoyaApi object
         this.api = api;
@@ -41,6 +44,8 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
         this.debug = debug;
         // Markdown exporter
         this.exporter = exporter;
+        // Executor
+        this.executor = executor;
 
     }
 
@@ -72,7 +77,7 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
                     
                     Additional details: %s
                     """.formatted(vulnerability, reqRes.request().toString(),
-                        reqRes.response().toString(), additionalDetails);
+                    reqRes.response().toString(), additionalDetails);
 
             String title;
             String details;
@@ -154,7 +159,7 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
             // Export the issue in Markdown (if requested)
             this.exporter.ensureConfigured();
 
-            if (this. exporter.isExportEnabled()) {
+            if (this.exporter.isExportEnabled()) {
                 String markdownIssue = """
                         # Title
                         %s
@@ -219,12 +224,13 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
                         AuditIssueConfidence confidence = dialog.getConfidence();
                         String additionalDetails = dialog.getAdditionalDetails();
 
-                        // A new thread is necessary because we cannot call the LLM function inside the GUI thread
-                        // to avoid blocking Burp
-                        new Thread(() -> {
-                            reportWithAi(vulnerability, severity, confidence, additionalDetails, reqRes);
-                        }).start();
-
+                        executor.submit(() -> {
+                            try {
+                                reportWithAi(vulnerability, severity, confidence, additionalDetails, reqRes);
+                            } catch (Exception ex) {
+                                logging.logToError("[AiReporter] Reporting failed: " + ex.getMessage());
+                            }
+                        });
                     }
 
                 } else {
