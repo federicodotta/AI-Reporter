@@ -181,6 +181,11 @@ public class BurpAiClient implements LlmClient {
         //this.logging.logToError("Burp AI has not changeable Api key");
     }
 
+    @Override
+    public LlmProvider getProvider() {
+        return LlmProvider.BURP_AI;
+    }
+
     private String loadPref(String key, String defaultValue) {
         String saved = persistence.preferences().getString(Prefs.PREFIX + key);
         return (saved != null && !saved.isBlank()) ? saved : defaultValue;

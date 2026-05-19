@@ -1,6 +1,7 @@
 package org.fd;
 
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.core.BurpSuiteEdition;
 import burp.api.montoya.logging.Logging;
 import burp.api.montoya.persistence.Preferences;
 
@@ -28,6 +29,7 @@ public class AiReporterUI {
     private JPasswordField apiKeyField;
     private JLabel urlLabel;
     private JLabel apiKeyLabel;
+    private JLabel modelLabel;
     private JLabel temperatureLabel;
     private JTextArea promptArea;
     private JTextArea responseArea;
@@ -85,12 +87,9 @@ public class AiReporterUI {
 
         gbc.gridx = 1; gbc.weightx = 1;
         providerCombo = new JComboBox<>(LlmProvider.values());
-        String savedProvider = preferences.getString(Prefs.KEY_PROVIDER);
-        if (savedProvider != null) {
-            try {
-                providerCombo.setSelectedItem(LlmProvider.valueOf(savedProvider));
-            } catch (IllegalArgumentException ignored) { /* keep default */ }
-        }
+        try {
+            providerCombo.setSelectedItem(client.getProvider());
+        } catch (IllegalArgumentException ignored) { }
         providerCombo.addActionListener(e -> onProviderSwitch());
         configPanel.add(providerCombo, gbc);
 
@@ -105,7 +104,8 @@ public class AiReporterUI {
 
         // Row 2 — Model
         gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
-        configPanel.add(new JLabel("Model:"), gbc);
+        modelLabel = new JLabel("Model:");
+        configPanel.add(modelLabel, gbc);
 
         gbc.gridx = 1; gbc.weightx = 1;
         modelField = new JTextField(client.getModel(), 40);
@@ -135,8 +135,10 @@ public class AiReporterUI {
 
         gbc.gridx = 1; gbc.weightx = 1;
         htmlEncodeCombo = new JComboBox<>(new String[]{"NO (DO NOT apply HTML encoding to issue details and remediation)","YES (apply HTML encoding to issue details and remediation)"});
-        String savedEncode = preferences.getString(Prefs.KEY_HTML_ENCODE);
-        htmlEncodeCombo.setSelectedItem(savedEncode.startsWith("NO") ? "NO (DO NOT apply HTML encoding to issue details and remediation)" : "YES (apply HTML encoding to issue details and remediation)");
+        htmlEncodeCombo.setSelectedItem(client.htmlEncodeIssues() ?
+                "YES (apply HTML encoding to issue details and remediation)" :
+                "NO (DO NOT apply HTML encoding to issue details and remediation)");
+
         configPanel.add(htmlEncodeCombo, gbc);
 
         // Apply button (spans all config rows)
@@ -206,6 +208,7 @@ public class AiReporterUI {
         urlField.setEnabled(isOpenAi);
         urlLabel.setEnabled(isOpenAi);
         modelField.setEnabled(isOpenAi);
+        modelLabel.setEnabled(isOpenAi);
         apiKeyField.setEnabled(isOpenAi);
         apiKeyLabel.setEnabled(isOpenAi);
     }
@@ -292,4 +295,10 @@ public class AiReporterUI {
     private void setStatus(String text) {
         statusLabel.setText(text);
     }
+
+    private String loadPref(String key, String defaultValue) {
+        String saved = this.api.persistence().preferences().getString(Prefs.PREFIX + key);
+        return (saved != null && !saved.isBlank()) ? saved : defaultValue;
+    }
+
 }

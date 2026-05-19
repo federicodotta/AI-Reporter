@@ -4,6 +4,7 @@ import burp.api.montoya.BurpExtension;
 import burp.api.montoya.EnhancedCapability;
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.ai.Ai;
+import burp.api.montoya.core.BurpSuiteEdition;
 import burp.api.montoya.logging.Logging;
 import burp.api.montoya.persistence.PersistedObject;
 import burp.api.montoya.persistence.Preferences;
@@ -129,7 +130,13 @@ public class AiReporter implements BurpExtension {
                 return LlmProvider.valueOf(saved);
             } catch (IllegalArgumentException ignored) { /* fall through */ }
         }
-        return LlmProvider.BURP_AI;
+
+        // By default return Burp AI for PRO and OPENAI_COMPATIBLE for COMMUNITY
+        if(api.burpSuite().version().edition() == BurpSuiteEdition.COMMUNITY_EDITION)
+            return LlmProvider.OPENAI_COMPATIBLE;
+        else
+            return LlmProvider.BURP_AI;
+
     }
 
     private void switchProvider(LlmProvider provider) {

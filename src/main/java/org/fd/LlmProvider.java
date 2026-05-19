@@ -2,8 +2,8 @@ package org.fd;
 
 public enum LlmProvider {
 
-    OPENAI_COMPATIBLE("Ollama / OpenAI"),
-    BURP_AI("Burp AI");
+    BURP_AI("Burp AI"),
+    OPENAI_COMPATIBLE("Ollama / OpenAI");
 
     private final String displayName;
 

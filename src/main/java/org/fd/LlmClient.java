@@ -10,6 +10,8 @@ public interface LlmClient {
 
     void clearHistory();
 
+    LlmProvider getProvider();
+
     String getBaseUrl();
     void   setBaseUrl(String url);
 

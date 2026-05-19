@@ -257,6 +257,11 @@ public class OllamaClient implements LlmClient{
 
     }
 
+    @Override
+    public LlmProvider getProvider() {
+        return LlmProvider.OPENAI_COMPATIBLE;
+    }
+
     private String loadPref(String key, String defaultValue) {
         String saved = this.api.persistence().preferences().getString(Prefs.PREFIX + key);
         return (saved != null && !saved.isBlank()) ? saved : defaultValue;
