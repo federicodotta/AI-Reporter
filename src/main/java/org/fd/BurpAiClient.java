@@ -40,7 +40,7 @@ public class BurpAiClient implements LlmClient {
     // Function that calls LLM without history
     public String oneShot(String userPrompt) throws PromptException {
 
-        if (this.ai.isEnabled()) {
+        if (isAiEnabled()) {
 
             // Create the message array that includes the system prompt and the user message
             Message[] messages = new Message[]{systemMessage(this.prompts.getPrompt("reportingPrompt")), userMessage(userPrompt)};
@@ -74,7 +74,7 @@ public class BurpAiClient implements LlmClient {
     // Function that call LLM using history
     public String chat(String userPrompt) throws PromptException {
 
-        if(this.ai.isEnabled()) {
+        if(isAiEnabled()) {
 
             if(this.history == null) {
                 this.history = new ArrayList<Message>();

@@ -56,7 +56,7 @@ public class OllamaClient implements LlmClient{
         // With Burp Suite Pro, guidelines require to check if AI is enabled also with local models.
         // This check is skipped for Community Edition, that does not include Burp AI but that can
         // use the extension with local models.
-        if(ai.isEnabled() || api.burpSuite().version().edition() == BurpSuiteEdition.COMMUNITY_EDITION) {
+        if(isAiEnabled()) {
 
             JSONObject payload = new JSONObject()
                     .put("model", model)
@@ -96,7 +96,7 @@ public class OllamaClient implements LlmClient{
         // With Burp Suite Pro, guidelines require to check if AI is enabled also with local models.
         // This check is skipped for Community Edition, that does not include Burp AI but that can
         // use the extension with local models.
-        if(ai.isEnabled() || api.burpSuite().version().edition() == BurpSuiteEdition.COMMUNITY_EDITION) {
+        if(isAiEnabled()) {
 
             if (this.history == null) {
                 this.history = new ArrayList<String[]>();
@@ -138,6 +138,10 @@ public class OllamaClient implements LlmClient{
         // This check is skipped for Community Edition, that does not include Burp AI but that can
         // use the extension with local models.
         return ai.isEnabled() || api.burpSuite().version().edition() == BurpSuiteEdition.COMMUNITY_EDITION;
+
+        // Uncomment and comment previous line to disable AI switch for Ollama mode
+        //return true;
+
     }
 
     @Override

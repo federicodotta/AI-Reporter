@@ -264,9 +264,9 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
                 } else {
 
                     JOptionPane.showMessageDialog(api.userInterface().swingUtils().suiteFrame(),
-                            "Please enable Burp AI features to " +
-                                    "use this extension (additional costs may be charged)",
-                            "Burp AI disabled", JOptionPane.INFORMATION_MESSAGE);
+                            "Please enable AI features to " +
+                                    "use this extension (additional costs may be charged if a non-local model is selected)",
+                            "AI features disabled", JOptionPane.INFORMATION_MESSAGE);
                 }
 
             }));
