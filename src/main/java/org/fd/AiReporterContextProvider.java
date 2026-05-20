@@ -2,6 +2,7 @@ package org.fd;
 
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.ai.chat.PromptException;
+import burp.api.montoya.core.BurpSuiteEdition;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.logging.Logging;
 import burp.api.montoya.scanner.audit.issues.AuditIssue;
@@ -140,21 +141,25 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
                 encodedRemediation = this.api.utilities().htmlUtils().encode(remediation);
             }
 
-            // Report issue in Burp Suite with AI details
-            AuditIssue auditIssue = AuditIssue.auditIssue(title,
-                    encodedDetails,
-                    encodedRemediation,
-                    reqRes.request().url(),
-                    severity,
-                    confidence,
-                    null, // background
-                    null, // remediationBackground
-                    severity,
-                    reqRes);
+            if(this.api.burpSuite().version().edition() != BurpSuiteEdition.COMMUNITY_EDITION) {
 
-            this.api.siteMap().add(auditIssue);
+                // Report issue in Burp Suite with AI details
+                AuditIssue auditIssue = AuditIssue.auditIssue(title,
+                        encodedDetails,
+                        encodedRemediation,
+                        reqRes.request().url(),
+                        severity,
+                        confidence,
+                        null, // background
+                        null, // remediationBackground
+                        severity,
+                        reqRes);
 
-            this.logging.logToOutput("* Issue reported in Burp suite!");
+                this.api.siteMap().add(auditIssue);
+
+                this.logging.logToOutput("* Issue reported in Burp suite!");
+
+            }
 
             // Export the issue in Markdown (if requested)
             this.exporter.ensureConfigured();
