@@ -5,7 +5,7 @@ public final class Prefs {
     public static final String PREFIX = "org.fd.aireporter.";
 
     public static final String DEFAULT_URL = "http://localhost:11434";
-    public static final String DEFAULT_MODEL = "gpt-oss";
+    public static final String DEFAULT_MODEL = "gpt-oss:20b";
     public static final String DEFAULT_TEMPERATURE = "0.0";
     public static final String DEFAULT_HTML_ENCODE = "NO";
 
