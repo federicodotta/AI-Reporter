@@ -87,7 +87,7 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
             // {{aireporter_request_first_XX}}
             userMessage = Utils.replaceFirstChars("aireporter_request", userMessage,
                     reqRes.request().toByteArray(), debug, logging);
-            // {{aireporter_response_first_XX}}
+            // {{aireporter_response_last_XX}}
             userMessage = Utils.replaceLastChars("aireporter_request", userMessage,
                     reqRes.request().toByteArray(), debug, logging);
             // {{aireporter_response_first_XX}}
