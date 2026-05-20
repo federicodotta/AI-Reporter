@@ -212,6 +212,19 @@ public class AiReporterUI {
         if (onProviderChanged != null) {
             onProviderChanged.accept(selected);
         }
+
+        refreshFields();
+
+    }
+
+    private void refreshFields() {
+        urlField.setText(client.getBaseUrl());
+        modelField.setText(client.getModel());
+        apiKeyField.setText(client.getApiKey());
+        temperatureField.setText(String.valueOf(client.getTemperature()));
+        htmlEncodeCombo.setSelectedItem(client.htmlEncodeIssues()
+                ? "YES (apply HTML encoding to issue details and remediation)"
+                : "NO (DO NOT apply HTML encoding to issue details and remediation)");
     }
 
     private void updateFieldVisibility() {
