@@ -72,19 +72,19 @@ public class AiReporter implements BurpExtension {
 
         // Register our Context Menu Item Provider
         customContextMenuItemProvider = new AiReporterContextProvider(api,activeClient,
-                this.debug, exporter, executor);
+                this.debug, exporter, executor, prompts);
         api.userInterface().registerContextMenuItemsProvider(customContextMenuItemProvider);
 
         // Menu bar
-        MenuItem editPromptItem = MenuItem.basicMenuItem("Edit prompts")
+        MenuItem editPromptItem = MenuItem.basicMenuItem("Edit prompts and templates")
                 .withAction(() -> new PromptDialog(
                         api.userInterface().swingUtils().suiteFrame(), prompts, api
                 ).show());
 
-        MenuItem resetPromptsItem = MenuItem.basicMenuItem("Reset all prompts to default")
+        MenuItem resetPromptsItem = MenuItem.basicMenuItem("Reset all prompts and templates to default")
                 .withAction(() -> {
                     int confirm = JOptionPane.showConfirmDialog(api.userInterface().swingUtils().suiteFrame(),
-                            "Restore all prompts to their default values?",
+                            "Restore all prompts and templates to their default values?",
                             "Restore Defaults", JOptionPane.YES_NO_OPTION);
                     if (confirm == JOptionPane.YES_OPTION) {
                         prompts.resetToDefaults();

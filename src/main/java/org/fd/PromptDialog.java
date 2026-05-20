@@ -45,9 +45,6 @@ public class PromptDialog {
             String label = entry.getKey();
             String value = entry.getValue();
 
-            //this.logging.logToOutput("SHOW");
-            //this.logging.logToOutput(label + " - " + value);
-
             JTextArea textArea = new JTextArea(14, 55);
             textArea.setLineWrap(true);
             textArea.setWrapStyleWord(true);
@@ -75,10 +72,14 @@ public class PromptDialog {
             tabPanel.add(new JScrollPane(textArea), BorderLayout.CENTER);
             tabPanel.add(buttonBar, BorderLayout.SOUTH);
 
+            // If this prompt has tags defined, show the tags panel above the textarea
+            LinkedHashMap<String, String> tags = Prompt.PROMPT_TAGS.get(label);
+            if (tags != null && !tags.isEmpty()) {
+                tabPanel.add(buildTagsPanel(tags), BorderLayout.NORTH);
+            }
+
             tabbedPane.addTab(label, tabPanel);
         }
-
-        tabbedPane.setPreferredSize(new Dimension(650, 350));
 
         Window owner = SwingUtilities.getWindowAncestor(parent);
         if (owner == null) {
@@ -86,30 +87,84 @@ public class PromptDialog {
                     .getFocusedWindow();
         }
 
-        int result = JOptionPane.showConfirmDialog(
-                parent, tabbedPane,
-                "Edit Prompts",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE);
+        JDialog dialog = new JDialog(owner, "Edit Prompts and templates", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setResizable(true);
 
-        confirmed = (result == JOptionPane.OK_OPTION);
+        JButton okBtn     = new JButton("OK");
+        JButton cancelBtn = new JButton("Cancel");
+        okBtn.addActionListener(e -> { confirmed = true;  dialog.dispose(); });
+        cancelBtn.addActionListener(e -> { confirmed = false; dialog.dispose(); });
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnPanel.add(okBtn);
+        btnPanel.add(cancelBtn);
+
+        dialog.getContentPane().setLayout(new BorderLayout(5, 5));
+        dialog.getContentPane().add(tabbedPane, BorderLayout.CENTER);
+        dialog.getContentPane().add(btnPanel, BorderLayout.SOUTH);
+
+        dialog.setMinimumSize(new Dimension(650, 420));
+        dialog.setPreferredSize(new Dimension(700, 500));
+        dialog.pack();
+        dialog.setLocationRelativeTo(parent);
+        dialog.setVisible(true); // blocks until disposed
+
         if (confirmed) {
             saveAll();
         }
         return confirmed;
     }
 
+    private JPanel buildTagsPanel(LinkedHashMap<String, String> tags) {
+        JPanel tagsGrid = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(2, 6, 2, 6);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        int row = 0;
+        for (Map.Entry<String, String> tag : tags.entrySet()) {
+            gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
+            JTextField tagField = new JTextField(tag.getKey());
+            tagField.setEditable(false);
+            tagField.setFont(new Font(Font.MONOSPACED, Font.BOLD, 12));
+            tagField.setBorder(BorderFactory.createEmptyBorder());
+            tagField.setBackground(null);
+            tagField.setOpaque(false);
+            tagsGrid.add(tagField, gbc);
+
+            gbc.gridx = 1; gbc.weightx = 0;
+            tagsGrid.add(new JLabel("—"), gbc);
+
+            gbc.gridx = 2; gbc.weightx = 1;
+            tagsGrid.add(new JLabel(tag.getValue()), gbc);
+
+            row++;
+        }
+
+        // Scrollable area capped at ~3 rows; expands automatically if fewer tags
+        int rowHeight = 26;
+        int maxVisibleRows = 3;
+        int preferredHeight = Math.min(tags.size(), maxVisibleRows) * rowHeight + 8;
+
+        JScrollPane scroll = new JScrollPane(tagsGrid,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setPreferredSize(new Dimension(0, preferredHeight));
+
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.setBorder(BorderFactory.createTitledBorder("Available tags"));
+        panel.add(scroll, BorderLayout.CENTER);
+        return panel;
+    }
+
     private void saveAll() {
         for (Map.Entry<String, JTextArea> entry : textAreas.entrySet()) {
             String value = entry.getValue().getText().trim();
-
-            //this.logging.logToOutput("SAVEALL");
-            //this.logging.logToOutput(Prompt.prefKey(entry.getKey()) + " - " + entry.getKey() + " - " + value);
-
             preferences.setString(Prompt.prefKey(entry.getKey()), value);
             prompts.setPrompt(entry.getKey(), value);
         }
     }
+
     private void importPrompt(JTextArea textArea) {
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Import Prompt");

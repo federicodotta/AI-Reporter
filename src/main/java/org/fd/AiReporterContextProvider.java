@@ -17,6 +17,8 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class AiReporterContextProvider implements ContextMenuItemsProvider {
@@ -28,9 +30,10 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
     boolean debug;
     MarkdownExporter exporter;
     ExecutorService executor;
+    Prompt prompts;
 
     public AiReporterContextProvider(MontoyaApi api, LlmClient llmClient, boolean debug, MarkdownExporter exporter,
-                                     ExecutorService executor) {
+                                     ExecutorService executor, Prompt prompts) {
 
         // Save a reference to the MontoyaApi object
         this.api = api;
@@ -47,6 +50,8 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
         this.exporter = exporter;
         // Executor
         this.executor = executor;
+        // Prompts and templates
+        this.prompts = prompts;
 
     }
 
@@ -66,19 +71,31 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
         // If AI features are enabled
         if(this.llmClient.isAiEnabled()) {
 
-            // User message format
-            String userMessage = """
-                    Vulnerability name: %s
-                    
-                    HTTP Request:
-                    %s
-                    
-                    HTTP Response:
-                    %s
-                    
-                    Additional details: %s
-                    """.formatted(vulnerability, reqRes.request().toString(),
-                    reqRes.response().toString(), additionalDetails);
+            String userMessage = prompts.getPrompt("userMessageTemplate")
+                    .replace("{{aireporter_issue_name}}", vulnerability)
+                    .replace("{{aireporter_additional_details}}", additionalDetails)
+                    .replace("{{aireporter_request}}", reqRes.request().toString())
+                    .replace("{{aireporter_response}}", reqRes.response().toString())
+                    .replace("{{aireporter_request_body}}", reqRes.request().bodyToString())
+                    .replace("{{aireporter_response_body}}", reqRes.response().bodyToString())
+                    .replace("{{aireporter_request_headers}}",
+                            reqRes.request().toByteArray().subArray(0,reqRes.request().bodyOffset()).toString())
+                    .replace("{{aireporter_response_headers}}",
+                            reqRes.response().toByteArray().subArray(0,reqRes.response().bodyOffset()).toString())
+                    .replace("{{aireporter_request_url}}", reqRes.request().url());
+
+            // {{aireporter_request_first_XX}}
+            userMessage = Utils.replaceFirstChars("aireporter_request", userMessage,
+                    reqRes.request().toByteArray(), debug, logging);
+            // {{aireporter_response_first_XX}}
+            userMessage = Utils.replaceLastChars("aireporter_request", userMessage,
+                    reqRes.request().toByteArray(), debug, logging);
+            // {{aireporter_response_first_XX}}
+            userMessage = Utils.replaceFirstChars("aireporter_response", userMessage,
+                    reqRes.response().toByteArray(), debug, logging);
+            // {{aireporter_response_last_XX}}
+            userMessage = Utils.replaceLastChars("aireporter_response", userMessage,
+                    reqRes.response().toByteArray(), debug, logging);
 
             String title;
             String details;
@@ -165,29 +182,35 @@ public class AiReporterContextProvider implements ContextMenuItemsProvider {
             this.exporter.ensureConfigured();
 
             if (this.exporter.isExportEnabled()) {
-                String markdownIssue = """
-                        # Title
-                        %s
-                        # Severity
-                        %s
-                        # Confidence
-                        %s
-                        # Issue detail
-                        %s
-                        # Remediation detail
-                        %s
-                        # Request/Response
-                        **Request**
-                        ```http
-                        %s
-                        ```
-                        **Response**
-                        ```http
-                        %s
-                        ```""".formatted(vulnerability, severity,
-                        confidence, details,
-                        remediation, reqRes.request().toString(),
-                        reqRes.response().toString());
+
+                String markdownIssue = prompts.getPrompt("markdownTemplate")
+                        .replace("{{aireporter_title}}", vulnerability)
+                        .replace("{{aireporter_severity}}", severity.toString())
+                        .replace("{{aireporter_confidence}}", confidence.toString())
+                        .replace("{{aireporter_details}}", details)
+                        .replace("{{aireporter_remediation}}", remediation)
+                        .replace("{{aireporter_request}}", reqRes.request().toString())
+                        .replace("{{aireporter_response}}", reqRes.response().toString())
+                        .replace("{{aireporter_request_body}}", reqRes.request().bodyToString())
+                        .replace("{{aireporter_response_body}}", reqRes.response().bodyToString())
+                        .replace("{{aireporter_request_headers}}",
+                                reqRes.request().toByteArray().subArray(0,reqRes.request().bodyOffset()).toString())
+                        .replace("{{aireporter_response_headers}}",
+                                reqRes.response().toByteArray().subArray(0,reqRes.response().bodyOffset()).toString())
+                        .replace("{{aireporter_request_url}}", reqRes.request().url());
+
+                // {{aireporter_request_first_XX}}
+                markdownIssue = Utils.replaceFirstChars("aireporter_request", markdownIssue,
+                        reqRes.request().toByteArray(), debug, logging);
+                // {{aireporter_response_first_XX}}
+                markdownIssue = Utils.replaceLastChars("aireporter_request", markdownIssue,
+                        reqRes.request().toByteArray(), debug, logging);
+                // {{aireporter_response_first_XX}}
+                markdownIssue = Utils.replaceFirstChars("aireporter_response", markdownIssue,
+                        reqRes.response().toByteArray(), debug, logging);
+                // {{aireporter_response_last_XX}}
+                markdownIssue = Utils.replaceLastChars("aireporter_response", markdownIssue,
+                        reqRes.response().toByteArray(), debug, logging);
 
                 exporter.export(vulnerability, markdownIssue);
 
