@@ -4,12 +4,14 @@ A Burp Suite extension that uses Burp AI or local LLMs to automatically generate
 
 Right-click any request in Burp, select **Report with AI**, and the extension will produce a structured finding, creating a Burp Suite issue and optionally exporting it as a Markdown file ready for your pentest report.
 
+It can be used with Burp Suite Professional and Burp Suite Community. In the latter one, Burp AI and issue reporting on Burp Suite cannot be used (Pro-only features), but it is still possible to generate issues using a local LLM (or a OpenAI compatible one) and report it in markdown format.
+
 ## Features
 
 - **One-click reporting**: select a request, provide the vulnerability name, severity and confidence (plus optional additional details for issues that cannot be inferred from a single request, like an authorization bypass), and the LLM generates a complete finding
-- **Dual LLM back-end**: switch between **Burp AI** and **Ollama / OpenAI** (via the standard `/v1/chat/completions` API) from the configuration tab
+- **Dual LLM back-end**: switch between **Burp AI** and **Ollama / OpenAI compatible services** (via the standard `/v1/chat/completions` API) from the configuration tab
 - **Optional markdown export**: findings can be saved also as structured Markdown files
-- **Customisable prompts**: edit the system prompts, import/export them as text files, and restore defaults at any time
+- **Customisable prompts and templates**: edit the system prompts and templates, import/export them as text files, and restore defaults at any time
 - **Interactive chat tab**: an interactive chat is supplied as a bonus, but it is a simple one. It saves history but it does not implements trimming or other advanced features
 
 ## Important note
@@ -18,7 +20,7 @@ If you choose Burp AI as LLM engine, this extension will consume AI Credits. At 
 
 The same applies if a paid OpenAI compatible endpoint is used supplying an API Key.
 
-Additionally, the reported requests and responses, along with the data entered in the popup created by the extension, are sent to PortSwigger’s AI infrastructure (if Burp AI is selected) or to the chosen OpenAI compatbile third party. Local Ollama model on the contrary should not disclose data to third parties.
+Additionally, the reported requests and responses, along with the data entered in the popup created by the extension, are sent to PortSwigger’s AI infrastructure (if Burp AI is selected) or to the chosen OpenAI compatbile third party. Local Ollama model on the contrary **should not** disclose data to third parties.
 
 ## Requirements
 
@@ -29,7 +31,7 @@ Additionally, the reported requests and responses, along with the data entered i
 
 The last release can be downloaded in the Release section. Then load it in Burp via **Extensions → Add → Java → Select file**.
 
-The extension will be submitted also on Burp Suite BAppStore. Stay tuned!
+To accomplish with PortSwigger BAppStore policies, the extension requires the AI flag selected and AI feature enabled also for local models (for Pro users, on Burp Community the extension behaves differently). Main release has been developed this way and has been submitted to the BAppStore. I compiled a second version of the extension in the Release section without this check (a comment in the code shows where this check is), that you can use when you need to use local models without enabling Burp AI features (maybe for projects where it is mandatory to avoid sending data to third parties for contracts and policies).
 
 
 ## Build
@@ -57,8 +59,6 @@ The following configuiration can be set the **AI Reporter** tab in Burp Suite (B
 
 Click **Apply** to save. Settings persist across Burp restarts.
 
-**AI Reporter** menu entry allows to edit prompts and change markdown exporting options.
-
 ## Usage
 
 ### Report a new vulnerability
@@ -69,22 +69,84 @@ Click **Apply** to save. Settings persist across Burp restarts.
 4. Optionally add **Additional details** on the issue (useful when you are reporting an issue that cannot be easily understood by the LLM from the single request/response pair, like an IDOR)
 5. Click **OK** and the finding will be added as a Burp Suite issue. If Markdown export is enabled, it wiil also besaved to disk
 
+**N.B.** You are using a LLM. It may happens, especially with small models, high temperatures, wrong prompts or big requests/responses, that LLM produce wrong issues or issues in a wrong format that are discarded by the extension. 
+
 ### Chat
 
 Use the **AI Reporter** tab to have a free-form conversation with the LLM. The chat maintains conversation history for multi-turn interactions until you click **Clear History**.
 
 **This is a very simple chat, only for quick requests or for debugging the extension. It saves history but it does not implements trimming or other advanced features. History is lost when Burp is closed or when it is cleared.**
 
-### Prompt customisation
+## Prompts and templates customization
 
-From the menu bar: **AI Reporter → Edit prompts**
+AI Reporter uses four customizable prompts and templates, editable from the **AI Reporter → Edit prompts and templates** menu.
 
-Two prompts are available:
+| Name | Purpose |
+|------|---------|
+| `chatPrompt` | System prompt for the chat panel |
+| `reportingPrompt` | System prompt used when generating an issue report |
+| `userMessageTemplate` | User message sent to the LLM when reporting an issue |
+| `markdownTemplate` | Format of the exported Markdown file |
 
-- **reportPrompt**: system prompt for the reporting task
-- **chatPrompt**: system prompt for the interactive chat tab
+Each prompt can be imported, exported and restored to its default value.
 
-Each tab supports import/export and restore to default.
+The extension expects LLM output in the following format, so keep it in your reporting prompt! 
+
+```json
+{
+  "title": "Specific descriptive title of the finding",
+  "details": "Detailed description including evidence, location, and impact",
+  "remediation": "Specific and actionable remediation steps"
+}
+```
+
+Sometimes Burp AI wrap output in Markdown also if not requested (JSON in a MD). For this reason, the extension removes markdown wrapping in the output.
+
+
+### Template tags
+
+`userMessageTemplate` and `markdownTemplate` support a set of **tags** that are replaced at runtime with data from the current HTTP request/response. Tags use the syntax `{{tag_name}}`.
+
+#### Tags available in `userMessageTemplate`
+
+| Tag | Replaced with |
+|-----|--------------|
+| `{{aireporter_issue_name}}` | The vulnerability name entered in the dialog |
+| `{{aireporter_additional_details}}` | The additional details entered in the dialog (optional) |
+| `{{aireporter_request}}` | Full HTTP request |
+| `{{aireporter_response}}` | Full HTTP response |
+| `{{aireporter_request_headers}}` | HTTP request headers only |
+| `{{aireporter_response_headers}}` | HTTP response headers only |
+| `{{aireporter_request_body}}` | HTTP request body |
+| `{{aireporter_response_body}}` | HTTP response body |
+| `{{aireporter_request_url}}` | Request URL |
+| `{{aireporter_request_first_XX}}` | First `XX` bytes of the request |
+| `{{aireporter_request_last_XX}}` | Last `XX` bytes of the request |
+| `{{aireporter_response_first_XX}}` | First `XX` bytes of the response |
+| `{{aireporter_response_last_XX}}` | Last `XX` bytes of the response |
+
+**N.B.** Using only a portion of the request can be useful when requests/responses are very big or when the LLM you use have a limited context!
+
+#### Tags available in `markdownTemplate`
+
+| Tag | Replaced with |
+|-----|--------------|
+| `{{aireporter_title}}` | Issue title generated by the LLM |
+| `{{aireporter_severity}}` | Severity selected in the dialog |
+| `{{aireporter_confidence}}` | Confidence selected in the dialog |
+| `{{aireporter_details}}` | Issue details generated by the LLM |
+| `{{aireporter_remediation}}` | Remediation advice generated by the LLM |
+| `{{aireporter_request}}` | Full HTTP request |
+| `{{aireporter_response}}` | Full HTTP response |
+| `{{aireporter_request_headers}}` | HTTP request headers only |
+| `{{aireporter_response_headers}}` | HTTP response headers only |
+| `{{aireporter_request_body}}` | HTTP request body |
+| `{{aireporter_response_body}}` | HTTP response body |
+| `{{aireporter_request_url}}` | Request URL |
+| `{{aireporter_request_first_XX}}` | First `XX` bytes of the request |
+| `{{aireporter_request_last_XX}}` | Last `XX` bytes of the request |
+| `{{aireporter_response_first_XX}}` | First `XX` bytes of the response |
+| `{{aireporter_response_last_XX}}` | Last `XX` bytes of the response |
 
 ## License
 
