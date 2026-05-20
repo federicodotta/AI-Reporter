@@ -122,7 +122,7 @@ public class AiReporterUI {
 
         // Row 4 — Temperature
         gbc.gridx = 0; gbc.gridy = 4; gbc.weightx = 0;
-        temperatureLabel = new JLabel("Temperature:");
+        temperatureLabel = new JLabel("Temperature (*):");
         configPanel.add(temperatureLabel, gbc);
 
         gbc.gridx = 1; gbc.weightx = 1;
@@ -140,6 +140,18 @@ public class AiReporterUI {
                 "NO (DO NOT apply HTML encoding to issue details and remediation)");
 
         configPanel.add(htmlEncodeCombo, gbc);
+
+        // Row 6 — Info text box
+        gbc.gridx = 0; gbc.gridy = 6; gbc.weightx = 0; gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        JTextField infoField = new JTextField("(*) Leave 0.0 as temperature to use model default");
+        infoField.setEditable(false);
+        infoField.setFocusable(false);
+        infoField.setBackground(UIManager.getColor("Label.background"));
+        infoField.setForeground(UIManager.getColor("Label.disabledForeground"));
+        infoField.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 0));
+        configPanel.add(infoField, gbc);
+        gbc.gridwidth = 1; // reset
 
         // Apply button (spans all config rows)
         JButton applyBtn = new JButton("Apply");
