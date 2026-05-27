@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/federicodotta/AI-Reporter/master/AI_Reporter_logo.png" alt="AI Reporter Logo"/>
+</p>
+
 # AI Reporter
 
 A Burp Suite extension that uses Burp AI or local LLMs to automatically generate vulnerability reports from HTTP request/response pairs.
