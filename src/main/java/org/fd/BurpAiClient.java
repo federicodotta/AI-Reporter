@@ -26,11 +26,14 @@ public class BurpAiClient implements LlmClient {
 
     boolean debug;
 
+    private final Object historyLock = new Object();
+    private long historyEpoch = 0;
+
     public BurpAiClient(MontoyaApi api, Prompt prompts, boolean debug) {
         this.ai = api.ai();
         this.persistence = api.persistence();
         this.prompts = prompts;
-        this.history = null;
+        this.history = new ArrayList<>();;
         this.logging = api.logging();
         this.temperature = Double.valueOf(loadPref("TEMPERATURE", Prefs.DEFAULT_TEMPERATURE));
         this.debug = debug;
@@ -76,22 +79,26 @@ public class BurpAiClient implements LlmClient {
 
         if(isAiEnabled()) {
 
-            if(this.history == null) {
-                this.history = new ArrayList<Message>();
-                this.history.add(systemMessage(this.prompts.getPrompt("chatPrompt")));
-            }
+            Message[] snapshot;
+            long epochAtSend;
 
-            //We add the new user message to the list
-            this.history.add(userMessage(userPrompt));
+            synchronized (historyLock) {
+                if (history.isEmpty()) {
+                    history.add(systemMessage(this.prompts.getPrompt("chatPrompt")));
+                }
+                history.add(userMessage(userPrompt));
+                epochAtSend = historyEpoch;
+                snapshot = history.toArray(Message[]::new);
+            }
 
             // We send the full message list to the AI, in order to receive a response
             // that consider the whole message history
             PromptResponse response;
             if(this.temperature != 0.0)
                 response = this.ai.prompt().execute(PromptOptions.promptOptions().withTemperature(temperature),
-                        this.history.toArray(Message[]::new));
+                        snapshot);
             else
-                response = this.ai.prompt().execute(this.history.toArray(Message[]::new));
+                response = this.ai.prompt().execute(snapshot);
 
             // Debug block
             if (debug) {
@@ -104,7 +111,11 @@ public class BurpAiClient implements LlmClient {
             }
 
             // We save the LLM response as an assistant message in the history
-            this.history.add(assistantMessage(response.content()));
+            synchronized (historyLock) {
+                if (historyEpoch == epochAtSend) {
+                    history.add(assistantMessage(response.content()));
+                }
+            }
 
             // N.B. It is a very simple chat for quick questions. It does not implement trimming, etc. necessary
             // for complex uses
@@ -125,7 +136,11 @@ public class BurpAiClient implements LlmClient {
     }
 
     public void clearHistory() {
-        this.history = null;
+        //this.history = null;
+        synchronized (historyLock) {
+            history.clear();
+            historyEpoch++;
+        }
     }
 
     @Override

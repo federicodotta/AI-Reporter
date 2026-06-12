@@ -8,6 +8,7 @@ import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.logging.Logging;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
@@ -29,6 +30,9 @@ public class OllamaClient implements LlmClient{
     boolean debug;
     Ai ai;
 
+    // Lock
+    private final Object historyLock = new Object();
+    private long historyEpoch = 0;
 
     private static final String CHAT_ENDPOINT   = "/v1/chat/completions";
 
@@ -36,7 +40,7 @@ public class OllamaClient implements LlmClient{
         //this.systemMessage = systemMessage(systemPrompt);
         this.api = api;
         this.prompts = prompts;
-        this.history = null;
+        this.history = new ArrayList<>();
         this.logging = api.logging();
         this.ai = api.ai();
 
@@ -82,7 +86,13 @@ public class OllamaClient implements LlmClient{
                 this.logging.logToOutput("");
             }
 
-            return parseContentFromResponse(responseBody);
+            try {
+                return parseContentFromResponse(responseBody);
+            } catch(JSONException e) {
+                this.logging.logToError("Error in JSON exception:");
+                this.logging.logToError(responseBody);
+                return null;
+            }
 
         } else {
             return null;
@@ -98,32 +108,50 @@ public class OllamaClient implements LlmClient{
         // use the extension with local models.
         if(isAiEnabled()) {
 
-            if (this.history == null) {
-                this.history = new ArrayList<String[]>();
-                this.history.add(new String[]{"system", this.prompts.getPrompt("chatPrompt")});
+            String payload;
+            long epochAtSend;
+            synchronized (historyLock) {
+                if (history.isEmpty()) {
+                    history.add(new String[]{"system", this.prompts.getPrompt("chatPrompt")});
+                }
+                history.add(new String[]{"user", userPrompt});
+                epochAtSend = historyEpoch;
+                payload = buildChatPayload();
             }
-
-            history.add(new String[]{"user", userPrompt});
-
-            String payload = buildChatPayload();
 
             String responseBody = doPost(payload);
-            String reply = parseContentFromResponse(responseBody);
 
-            // Debug block
-            if (debug) {
-                this.logging.logToOutput("* Ollama/OpenAI chat");
-                this.logging.logToOutput("** User prompt:");
-                this.logging.logToOutput(userPrompt);
-                this.logging.logToOutput("** Chat payload:");
-                this.logging.logToOutput(payload);
-                this.logging.logToOutput("** Response body:");
-                this.logging.logToOutput(responseBody);
-                this.logging.logToOutput("");
+            try {
+
+                String reply = parseContentFromResponse(responseBody);
+
+                // Debug block
+                if (debug) {
+                    this.logging.logToOutput("* Ollama/OpenAI chat");
+                    this.logging.logToOutput("** User prompt:");
+                    this.logging.logToOutput(userPrompt);
+                    this.logging.logToOutput("** Chat payload:");
+                    this.logging.logToOutput(payload);
+                    this.logging.logToOutput("** Response body:");
+                    this.logging.logToOutput(responseBody);
+                    this.logging.logToOutput("");
+                }
+
+                synchronized (historyLock) {
+                    if (historyEpoch == epochAtSend) {
+                        history.add(new String[]{"assistant", reply});
+                    }
+                }
+
+                return reply;
+
+            } catch(JSONException e) {
+
+                logging.logToError("[AI Reporter] Error in JSON response. Response:");
+                logging.logToError(responseBody);
+                return null;
+
             }
-
-            history.add(new String[]{"assistant", reply});
-            return reply;
 
         } else {
 
@@ -146,7 +174,10 @@ public class OllamaClient implements LlmClient{
 
     @Override
     public void clearHistory() {
-        this.history = null;
+        synchronized (historyLock) {
+            history.clear();     // svuoto invece di riassegnare: il riferimento resta valido
+            historyEpoch++;      // invalido eventuali turni chat() in volo
+        }
     }
 
     @Override
@@ -203,7 +234,7 @@ public class OllamaClient implements LlmClient{
 
         JSONArray messages = new JSONArray();
 
-        synchronized (history) {
+        synchronized (historyLock) {
             for (String[] msg : history) {
                 messages.put(new JSONObject()
                         .put("role", msg[0])
@@ -251,13 +282,12 @@ public class OllamaClient implements LlmClient{
 
     }
 
-    private String parseContentFromResponse(String json) {
-
+    private String parseContentFromResponse(String json) throws JSONException {
         return new JSONObject(json)
-                .getJSONArray("choices")
-                .getJSONObject(0)
-                .getJSONObject("message")
-                .getString("content");
+                    .getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getString("content");
 
     }
 

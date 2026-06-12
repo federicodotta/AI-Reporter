@@ -239,11 +239,25 @@ public class AiReporterUI {
     }
 
     private void applyConfig() {
+
         String url   = urlField.getText().trim();
         String model = modelField.getText().trim();
         String key   = new String(apiKeyField.getPassword()).trim();
         String temperature = temperatureField.getText().trim();
         String htmlEncode = (String) htmlEncodeCombo.getSelectedItem();
+
+        // Check if temperature is a valid double and is not a negative value
+        try {
+            if(Double.parseDouble(temperature) < 0) {
+                this.logging.logToError("Temperature cannot be a negative value. Resetting the fields to the saved values");
+                refreshFields();
+                return;
+            }
+        } catch (NumberFormatException e) {
+            this.logging.logToError("Temperature is not a DOUBLE value. Resetting the fields to the saved values");
+            refreshFields();
+            return;
+        }
 
         client.setBaseUrl(url);
         client.setModel(model);
